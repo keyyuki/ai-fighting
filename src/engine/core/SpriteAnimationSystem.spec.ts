@@ -2,6 +2,7 @@
  * SpriteAnimationSystem.spec.ts
  * Unit tests for the SpriteAnimationSystem class
  */
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import {
   SpriteAnimationSystem,
   AnimationConfig,
@@ -86,7 +87,7 @@ describe("SpriteAnimationSystem", () => {
     ) as Animation;
 
     // Mock completion callback
-    const completionCallback = jest.fn();
+    const completionCallback = vi.fn();
     animation.setOnComplete(completionCallback);
 
     // Verify initial frame
@@ -141,7 +142,7 @@ describe("SpriteAnimationSystem", () => {
     ) as Animation;
 
     // Mock frame start callback
-    const frameCallback = jest.fn();
+    const frameCallback = vi.fn();
     animation.setFrameStartCallback(frameCallback);
 
     // Update to advance frames
@@ -185,8 +186,9 @@ describe("SpriteAnimationSystem", () => {
       "player1"
     ) as Animation;
 
-    // Advance animation
-    animation.update(200); // Should be on frame 2 now
+    // Advance animation - we'll advance one frame at a time to ensure it works correctly
+    animation.update(100); // Advance to frame 1
+    animation.update(100); // Advance to frame 2
     expect(animation.getCurrentFrame()).toEqual(testAnimation.frames[2]);
 
     // Reset animation

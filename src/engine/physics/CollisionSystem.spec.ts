@@ -2,6 +2,7 @@
  * CollisionSystem.spec.ts
  * Unit tests for the CollisionSystem class
  */
+import { describe, test, expect, beforeEach } from "vitest";
 import {
   CollisionSystem,
   ColliderType,
