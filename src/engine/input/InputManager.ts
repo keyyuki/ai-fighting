@@ -21,6 +21,11 @@ export interface InputState {
 }
 
 /**
+ * Determines if code is running in a browser environment
+ */
+const isBrowser = typeof window !== "undefined";
+
+/**
  * Manages keyboard and gamepad inputs
  */
 export class InputManager {
@@ -50,16 +55,18 @@ export class InputManager {
     this.keyboardConfig = config.keyboard || {};
     this.gamepadConfig = config.gamepad || {};
 
-    // Setup event listeners
-    window.addEventListener("keydown", this.handleKeyDown);
-    window.addEventListener("keyup", this.handleKeyUp);
+    if (isBrowser) {
+      // Setup event listeners in browser environment
+      window.addEventListener("keydown", this.handleKeyDown);
+      window.addEventListener("keyup", this.handleKeyUp);
 
-    // Gamepad API event listeners
-    window.addEventListener("gamepadconnected", this.handleGamepadConnected);
-    window.addEventListener(
-      "gamepaddisconnected",
-      this.handleGamepadDisconnected
-    );
+      // Gamepad API event listeners
+      window.addEventListener("gamepadconnected", this.handleGamepadConnected);
+      window.addEventListener(
+        "gamepaddisconnected",
+        this.handleGamepadDisconnected
+      );
+    }
   }
 
   /**
@@ -78,7 +85,9 @@ export class InputManager {
     };
 
     // Update gamepad state
-    this.updateGamepadState();
+    if (isBrowser) {
+      this.updateGamepadState();
+    }
   }
 
   /**
@@ -109,16 +118,43 @@ export class InputManager {
   }
 
   /**
+   * Simulate a key press (useful for testing and AI)
+   * @param key The key to simulate pressing
+   */
+  public simulateKeyPress(key: InputKey): void {
+    if (!this.currentState.pressed.has(key)) {
+      this.currentState.justPressed.add(key);
+    }
+    this.currentState.pressed.add(key);
+  }
+
+  /**
+   * Simulate a key release (useful for testing and AI)
+   * @param key The key to simulate releasing
+   */
+  public simulateKeyRelease(key: InputKey): void {
+    if (this.currentState.pressed.has(key)) {
+      this.currentState.justReleased.add(key);
+      this.currentState.pressed.delete(key);
+    }
+  }
+
+  /**
    * Cleanup event listeners
    */
   public dispose(): void {
-    window.removeEventListener("keydown", this.handleKeyDown);
-    window.removeEventListener("keyup", this.handleKeyUp);
-    window.removeEventListener("gamepadconnected", this.handleGamepadConnected);
-    window.removeEventListener(
-      "gamepaddisconnected",
-      this.handleGamepadDisconnected
-    );
+    if (isBrowser) {
+      window.removeEventListener("keydown", this.handleKeyDown);
+      window.removeEventListener("keyup", this.handleKeyUp);
+      window.removeEventListener(
+        "gamepadconnected",
+        this.handleGamepadConnected
+      );
+      window.removeEventListener(
+        "gamepaddisconnected",
+        this.handleGamepadDisconnected
+      );
+    }
   }
 
   /**
@@ -164,6 +200,8 @@ export class InputManager {
    * Update gamepad state from Gamepad API
    */
   private updateGamepadState(): void {
+    if (!isBrowser || !navigator.getGamepads) return;
+
     // Get the latest gamepad data
     const gamepads = navigator.getGamepads();
 
@@ -178,7 +216,6 @@ export class InputManager {
         for (let j = 0; j < gamepad.buttons.length; j++) {
           const buttonKey = `button_${j}`;
           const mappedKey = this.gamepadConfig[buttonKey];
-
           if (mappedKey && gamepad.buttons[j].pressed) {
             // Mark this button as currently pressed for this update
             this.gamepadButtonsPressed.add(mappedKey);
@@ -216,6 +253,7 @@ export class InputManager {
     // Horizontal axis (typically axis 0)
     if (gamepad.axes.length > 0) {
       const horizontalAxis = gamepad.axes[0];
+
       // Right
       if (horizontalAxis > 0.5) {
         const mappedKey = this.gamepadConfig["axis_0_positive"];
@@ -243,6 +281,7 @@ export class InputManager {
     // Vertical axis (typically axis 1)
     if (gamepad.axes.length > 1) {
       const verticalAxis = gamepad.axes[1];
+
       // Down
       if (verticalAxis > 0.5) {
         const mappedKey = this.gamepadConfig["axis_1_positive"];

@@ -12,12 +12,12 @@
   - [x] Implement collision detection system
   - [x] Create input handling system (keyboard/gamepad)
   - [x] Implement sprite animation system
-- [ ] Character System
-  - [ ] Create base character class
-  - [ ] Implement animation state machine
-  - [ ] Design hitbox/hurtbox system
-  - [ ] Create movement and gravity physics
-  - [ ] Implement attack system with frame data
+- [x] Character System
+  - [x] Create base character class
+  - [x] Implement animation state machine
+  - [x] Design hitbox/hurtbox system
+  - [x] Create movement and gravity physics
+  - [x] Implement attack system with frame data
 - [ ] UI Development
   - [ ] Create health bars
   - [ ] Implement timer system
@@ -52,6 +52,11 @@
 - [x] Implement input handling system for keyboard and gamepad (Date: Current)
 - [x] Create collision detection system for hitboxes and hurtboxes (Date: Current)
 - [x] Implement sprite animation system with frame timing control (Date: Current)
+- [x] Create base character class with state management (Date: Current)
+- [x] Implement character physics system with gravity and movement (Date: Current)
+- [x] Design hitbox system for fighting game collision detection (Date: Current)
+- [x] Implement attack system with frame data and combos (Date: Current)
+- [x] Create animation state machine for character animations (Date: Current)
 
 ## Discovered During Work
 
@@ -61,6 +66,7 @@
 - [ ] Need to research optimal collision detection approach for fighting games
 - [ ] Consider adding training mode features
 - [x] Need to carefully structure audio service for proper testing
+- [x] Should add unit tests for all character components
 
 ## Backlog
 
