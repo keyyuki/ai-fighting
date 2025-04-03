@@ -122,25 +122,9 @@ export class GameUIManager {
    */
   public setTotalRounds(totalRounds: number): void {
     this.totalRounds = totalRounds;
-
     const roundIndicator = this.getRoundIndicator();
     if (roundIndicator) {
-      // Create a new round indicator with the updated round count
-      const roundIndicatorWidth = 200;
-      const roundIndicatorHeight = 50;
-      const newRoundIndicator = new RoundIndicator(
-        (this.canvasWidth - roundIndicatorWidth) / 2,
-        60,
-        roundIndicatorWidth,
-        roundIndicatorHeight,
-        totalRounds
-      );
-
-      // Replace the existing round indicator
-      this.components.set("roundIndicator", newRoundIndicator);
-
-      // Match visibility with the old indicator
-      newRoundIndicator.setVisible(roundIndicator.isVisible());
+      roundIndicator.setTotalRounds(totalRounds);
     }
   }
 
@@ -227,10 +211,16 @@ export class GameUIManager {
     const p1HealthBar = this.components.get("player1HealthBar");
     const p2HealthBar = this.components.get("player2HealthBar");
 
-    if (p1HealthBar instanceof HealthBar && p2HealthBar instanceof HealthBar) {
+    // Removed instanceof check - if the components exist and have the expected methods, use them
+    if (
+      p1HealthBar &&
+      p2HealthBar &&
+      "setHealth" in p1HealthBar &&
+      "setHealth" in p2HealthBar
+    ) {
       return {
-        player1: p1HealthBar,
-        player2: p2HealthBar,
+        player1: p1HealthBar as HealthBar,
+        player2: p2HealthBar as HealthBar,
       };
     }
 
@@ -243,8 +233,9 @@ export class GameUIManager {
   public getTimer(): Timer | null {
     const timer = this.components.get("timer");
 
-    if (timer instanceof Timer) {
-      return timer;
+    // Removed instanceof check - if the component exists and has the expected methods, use it
+    if (timer && "start" in timer && "reset" in timer) {
+      return timer as Timer;
     }
 
     return null;
@@ -256,8 +247,13 @@ export class GameUIManager {
   public getRoundIndicator(): RoundIndicator | null {
     const roundIndicator = this.components.get("roundIndicator");
 
-    if (roundIndicator instanceof RoundIndicator) {
-      return roundIndicator;
+    // Removed instanceof check - if the component exists and has the expected methods, use it
+    if (
+      roundIndicator &&
+      "startRound" in roundIndicator &&
+      "addPlayerWin" in roundIndicator
+    ) {
+      return roundIndicator as RoundIndicator;
     }
 
     return null;
@@ -273,13 +269,16 @@ export class GameUIManager {
     const p1ComboCounter = this.components.get("player1ComboCounter");
     const p2ComboCounter = this.components.get("player2ComboCounter");
 
+    // Removed instanceof check - if the components exist and have the expected methods, use them
     if (
-      p1ComboCounter instanceof ComboCounter &&
-      p2ComboCounter instanceof ComboCounter
+      p1ComboCounter &&
+      p2ComboCounter &&
+      "incrementCombo" in p1ComboCounter &&
+      "incrementCombo" in p2ComboCounter
     ) {
       return {
-        player1: p1ComboCounter,
-        player2: p2ComboCounter,
+        player1: p1ComboCounter as ComboCounter,
+        player2: p2ComboCounter as ComboCounter,
       };
     }
 
@@ -292,8 +291,6 @@ export class GameUIManager {
   public handleResize(width: number, height: number): void {
     this.canvasWidth = width;
     this.canvasHeight = height;
-
-    // Recreate UI components with new dimensions
     this.setupGameUI();
   }
 }
