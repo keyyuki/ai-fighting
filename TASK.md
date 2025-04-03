@@ -31,7 +31,7 @@
   - [x] Design combo system
   - [x] Implement blocking mechanics
   - [x] Create special move input detection
-  - [ ] Design damage scaling
+  - [x] Design damage scaling
   - [ ] Add round system
 - [ ] Asset Creation/Integration
   - [ ] Create or source character sprites
@@ -92,6 +92,14 @@
   - [x] Update implementation classes to follow interface contracts
   - [x] Refactor tests to work with Vitest instead of Jest
   - [x] Fix bugs in system implementations
+- [x] Design damage scaling system (Date: Current)
+  - [x] Create IDamageScalingSystem interface
+  - [x] Implement DamageScalingSystem class with configurable scaling rules
+  - [x] Add attack-specific scaling based on attack types
+  - [x] Implement repeated move penalty system
+  - [x] Create temporary modifier system for special conditions
+  - [x] Integrate damage scaling with ComboSystem
+  - [x] Add comprehensive unit tests for damage scaling
 
 ## Discovered During Work
 

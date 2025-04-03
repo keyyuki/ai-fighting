@@ -10,8 +10,6 @@
   1. **Define interfaces first** - Create interfaces before any implementation code
   2. **Write tests second** - Develop comprehensive tests for the interface contracts
   3. **Implement code last** - Only write implementation after tests are created
-  4. **Run test and fix bug** - Run test and make sure all tests pass
-  5. **Re run test of all chaged module** - If any file is changed, test must be re run to make sure all tests pass
 - **Place interfaces in `interface/` subdirectories** within their respective modules
 - **Name interfaces with the prefix `I`** (e.g., `IAttackSystem`, `IBlockingSystem`)
 - **Create abstract classes** between interfaces and concrete implementations when appropriate

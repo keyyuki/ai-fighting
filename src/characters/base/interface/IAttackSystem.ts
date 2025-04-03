@@ -231,4 +231,11 @@ export interface IAttackSystem {
    * Interrupt the current attack (e.g. when hit)
    */
   interruptCurrentAttack(): void;
+
+  /**
+   * Get an attack by its name
+   * @param name The name of the attack to look up
+   * @returns The attack definition or null if not found
+   */
+  getAttackByName(name: string): Attack | null;
 }

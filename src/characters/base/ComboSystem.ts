@@ -6,6 +6,8 @@
 import { Character } from "./Character";
 import { AttackSystem, AttackPhase, Attack } from "./AttackSystem";
 import { UIManager } from "../../ui/UIManager";
+import { DamageScalingSystem } from "./DamageScalingSystem";
+import { DamageScalingConfig } from "./interface/IDamageScalingSystem";
 
 /**
  * Combo timing constraints in milliseconds
@@ -80,6 +82,11 @@ export interface ComboHit {
    * Timestamp when the hit landed
    */
   timestamp: number;
+
+  /**
+   * Current scaling factor when this hit occurred
+   */
+  scalingFactor: number;
 }
 
 /**
@@ -126,16 +133,6 @@ export class ComboSystem {
   };
 
   /**
-   * Minimum damage scaling (as percentage)
-   */
-  private minDamageScaling: number = 0.1; // 10% minimum damage
-
-  /**
-   * Damage scaling factor per hit
-   */
-  private damageScalingFactor: number = 0.1; // 10% reduction per hit
-
-  /**
    * Flag to track if juggle state is active
    */
   private isJuggleActive: boolean = false;
@@ -161,24 +158,56 @@ export class ComboSystem {
   private lastConnectedAttack: Attack | null = null;
 
   /**
+   * Damage scaling system
+   */
+  private damageScalingSystem: DamageScalingSystem;
+
+  /**
    * Constructor
    * @param character The character that owns this combo system
    * @param attackSystem The character's attack system
    * @param playerNumber Player number (1 or 2)
+   * @param damageScalingConfig Optional damage scaling configuration
    */
   constructor(
     character: Character,
     attackSystem: AttackSystem,
-    playerNumber: 1 | 2
+    playerNumber: 1 | 2,
+    damageScalingConfig?: Partial<DamageScalingConfig>
   ) {
     this.character = character;
     this.attackSystem = attackSystem;
     this.playerNumber = playerNumber;
 
+    // Initialize damage scaling system with optional config
+    this.damageScalingSystem = new DamageScalingSystem(damageScalingConfig);
+
     // Subscribe to attack system phase changes to detect attack windows
     this.attackSystem.setOnPhaseChangeCallback(
       this.onAttackPhaseChanged.bind(this)
     );
+  }
+
+  /**
+   * Set custom damage scaling configuration
+   * @param config New damage scaling configuration
+   */
+  public setDamageScalingConfig(config: Partial<DamageScalingConfig>): void {
+    this.damageScalingSystem.setConfig(config);
+  }
+
+  /**
+   * Get the current damage scaling configuration
+   */
+  public getDamageScalingConfig(): DamageScalingConfig {
+    return this.damageScalingSystem.getConfig();
+  }
+
+  /**
+   * Get the current damage scaling factor
+   */
+  public getCurrentScalingFactor(): number {
+    return this.damageScalingSystem.getCurrentScalingFactor();
   }
 
   /**
@@ -230,7 +259,6 @@ export class ComboSystem {
 
     // Determine connection type
     let connectionType = ComboConnectionType.LINK;
-
     if (this.lastConnectedAttack) {
       // If still in active frames or cancel window of previous attack, it's a cancel
       if (
@@ -255,13 +283,26 @@ export class ComboSystem {
       }
     }
 
-    // Calculate scaled damage based on combo length
-    const comboLength = isCombo ? this.currentCombo.length : 0;
-    const scaling = Math.max(
-      this.minDamageScaling,
-      1.0 - comboLength * this.damageScalingFactor
+    // Get attack history for damage scaling
+    const attackHistory = isCombo
+      ? (this.currentCombo
+          .map((hit) => this.getAttackByName(hit.attackName))
+          .filter(Boolean) as Attack[])
+      : [];
+
+    // Calculate the combo length considering if this is a new combo or continuing one
+    const comboLength = isCombo ? this.currentCombo.length + 1 : 1;
+
+    // Use the damage scaling system to calculate the scaled damage
+    const scaledDamage = this.damageScalingSystem.calculateScaledDamage(
+      rawDamage,
+      comboLength,
+      attack,
+      attackHistory
     );
-    const scaledDamage = Math.floor(rawDamage * scaling);
+
+    // Get the current scaling factor for display/tracking
+    const scalingFactor = this.damageScalingSystem.getCurrentScalingFactor();
 
     // Record the hit
     const hit: ComboHit = {
@@ -270,6 +311,7 @@ export class ComboSystem {
       scaledDamage,
       connectionType,
       timestamp: currentTime,
+      scalingFactor,
     };
 
     // Start a new combo or add to existing
@@ -291,6 +333,15 @@ export class ComboSystem {
       if (!opponent.isOnGround()) {
         this.isJuggleActive = true;
         this.currentJuggleCount++;
+
+        // Add a temporary juggle-specific damage modifier if needed
+        if (this.currentJuggleCount > 1) {
+          this.damageScalingSystem.applyTemporaryModifier(
+            "juggle-penalty",
+            0.9, // 10% additional reduction per juggle hit
+            1 // Only applies to the next hit
+          );
+        }
       }
 
       // Update UI with increased combo count
@@ -301,7 +352,51 @@ export class ComboSystem {
     this.lastHitTime = currentTime;
     this.lastConnectedAttack = attack;
 
+    // Apply special modifiers based on connection type
+    this.applyConnectionSpecificModifiers(connectionType);
+
     return isCombo;
+  }
+
+  /**
+   * Apply scaling modifiers based on connection type
+   * @param connectionType The type of combo connection
+   */
+  private applyConnectionSpecificModifiers(
+    connectionType: ComboConnectionType
+  ): void {
+    // Example: Apply different modifiers based on connection type
+    switch (connectionType) {
+      case ComboConnectionType.CANCEL:
+        // Cancels are common in combos, apply standard scaling
+        break;
+      case ComboConnectionType.LINK:
+        // Links are harder to do, reward with less scaling
+        this.damageScalingSystem.applyTemporaryModifier("link-bonus", 1.1, 1);
+        break;
+      case ComboConnectionType.CHAIN:
+        // Chains are built-in, standard scaling
+        break;
+      case ComboConnectionType.SPECIAL:
+        // Special connections are character-specific and should be rewarded
+        this.damageScalingSystem.applyTemporaryModifier(
+          "special-bonus",
+          1.15,
+          1
+        );
+        break;
+    }
+  }
+
+  /**
+   * Find an attack definition by name
+   * @param name Attack name to find
+   * @returns The attack definition or null if not found
+   */
+  private getAttackByName(name: string): Attack | null {
+    // This is a simplified implementation - in a real game,
+    // you would lookup from a registry of attacks
+    return this.attackSystem.getAttackByName(name);
   }
 
   /**
@@ -331,23 +426,30 @@ export class ComboSystem {
     this.currentJuggleCount = 0;
     this.lastConnectedAttack = null;
 
+    // Reset the damage scaling system
+    this.damageScalingSystem.reset();
+
     // Reset UI
     if (this.uiManager) {
       this.uiManager.resetCombo(this.playerNumber);
     }
 
-    // Reset damage scaling in the attack system
+    // Reset combo in the attack system
     this.attackSystem.resetCombo();
   }
 
   /**
    * Check if the combo should end (e.g., too much time has passed)
-   * @param deltaTime Time since last update
+   * @param deltaTime Time since last update in milliseconds
+   * @param frameCount Number of frames that passed (for damage scaling updates)
    */
-  public update(deltaTime: number): void {
+  public update(deltaTime: number, frameCount: number = 1): void {
     if (!this.comboActive) return;
 
     const currentTime = performance.now();
+
+    // Update the damage scaling system (for frame-based temporary modifiers)
+    this.damageScalingSystem.update(frameCount);
 
     // Check if combo timeout has been reached
     if (currentTime - this.lastHitTime > this.timingConfig.maxTimeBetweenHits) {
@@ -456,6 +558,7 @@ export class ComboSystem {
       (sum, hit) => sum + hit.rawDamage,
       0
     );
+
     const startTime = this.currentCombo[0].timestamp;
     const endTime = this.currentCombo[this.currentCombo.length - 1].timestamp;
 
@@ -513,7 +616,25 @@ export class ComboSystem {
       } damage | ${stats.duration.toFixed(2)}ms`
     );
     console.log(
-      `Connections: ${stats.connections.cancels} cancels, ${stats.connections.links} links, ${stats.connections.chains} chains`
+      `Scaling: ${(stats.averageScaling * 100).toFixed(1)}% | Connections: ${
+        stats.connections.cancels
+      } cancels, ${stats.connections.links} links, ${
+        stats.connections.chains
+      } chains, ${stats.connections.specials} specials`
     );
+  }
+
+  /**
+   * Get the attack history of the current combo
+   */
+  public getAttackHistory(): string[] {
+    return this.currentCombo.map((hit) => hit.attackName);
+  }
+
+  /**
+   * Get scaling history throughout the combo
+   */
+  public getScalingHistory(): number[] {
+    return this.currentCombo.map((hit) => hit.scalingFactor);
   }
 }

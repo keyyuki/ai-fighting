@@ -574,6 +574,15 @@ export class AttackSystem implements IAttackSystem {
   }
 
   /**
+   * Get an attack by its name
+   * @param name The name of the attack to look up
+   * @returns The attack definition or null if not found
+   */
+  public getAttackByName(name: string): Attack | null {
+    return this.attacks.get(name) || null;
+  }
+
+  /**
    * Interrupt the current attack (e.g. when hit)
    */
   public interruptCurrentAttack(): void {
