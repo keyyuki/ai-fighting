@@ -28,9 +28,9 @@
   - [x] Create round indicator
   - [x] Develop UI manager to control all UI components
 - [ ] Game Mechanics
-  - [ ] Design combo system
-  - [ ] Implement blocking mechanics
-  - [ ] Create special move input detection
+  - [x] Design combo system
+  - [x] Implement blocking mechanics
+  - [x] Create special move input detection
   - [ ] Design damage scaling
   - [ ] Add round system
 - [ ] Asset Creation/Integration
@@ -72,6 +72,26 @@
   - [x] Create combo counter with animation effects
   - [x] Implement round indicator with win tracking
   - [x] Add round announcements ("Round X, FIGHT!")
+- [x] Design comprehensive combo system (Date: Current)
+  - [x] Create ComboSystem class for tracking combo state
+  - [x] Implement damage scaling for combos
+  - [x] Track combo connections (links, cancels, chains)
+  - [x] Add juggle state tracking
+  - [x] Integrate with UI components
+  - [x] Add unit tests for combo system
+- [x] Implement blocking mechanics (Date: Current)
+  - [x] Create BlockingSystem class for managing blocks
+  - [x] Implement high/low blocking system
+  - [x] Add guard meter with recovery
+  - [x] Create guard break mechanics
+  - [x] Support different block types (standing, crouching)
+  - [x] Block stun and push back effects
+  - [x] Add unit tests for blocking system
+- [x] Rework and formalize system interfaces (Date: Current)
+  - [x] Create IAttackSystem and IBlockingSystem interfaces
+  - [x] Update implementation classes to follow interface contracts
+  - [x] Refactor tests to work with Vitest instead of Jest
+  - [x] Fix bugs in system implementations
 
 ## Discovered During Work
 

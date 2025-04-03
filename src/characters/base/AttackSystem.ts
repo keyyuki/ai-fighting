@@ -3,90 +3,15 @@
  * Manages attack execution, combo detection, and frame data for fighting game characters
  */
 
-import { Vector2D } from "../../engine/physics/CollisionSystem";
+import { Character } from "./Character";
 import { InputManager } from "../../engine/input/InputManager";
-import { Character, AttackFrameData } from "./Character";
 import * as AudioService from "../../utils/audioService";
-
-/**
- * Attack phase states
- */
-export enum AttackPhase {
-  STARTUP,
-  ACTIVE,
-  RECOVERY,
-  COMPLETED,
-}
-
-/**
- * Special move input requirement
- */
-export interface SpecialMoveInput {
-  /**
-   * Sequence of inputs required (e.g. ["down", "down-forward", "forward", "punch"])
-   */
-  sequence: string[];
-
-  /**
-   * Maximum time window in milliseconds to complete the sequence
-   */
-  timeWindow: number;
-}
-
-/**
- * Represents an attack with complete frame data
- */
-export interface Attack {
-  /**
-   * Name of the attack
-   */
-  name: string;
-
-  /**
-   * Type of attack (light, medium, heavy, special, etc.)
-   */
-  type: string;
-
-  /**
-   * Frame data (timing, damage, etc.)
-   */
-  frameData: AttackFrameData;
-
-  /**
-   * Can this attack be canceled into other attacks
-   */
-  canBeCanceled: boolean;
-
-  /**
-   * Sound effect to play when attack is executed
-   */
-  soundEffect?: string;
-
-  /**
-   * Animation ID for this attack
-   */
-  animationId: string;
-
-  /**
-   * Special move input sequence (if applicable)
-   */
-  specialMoveInput?: SpecialMoveInput;
-
-  /**
-   * Whether this attack can be performed in the air
-   */
-  canUseInAir: boolean;
-
-  /**
-   * Whether this attack can be performed while crouching
-   */
-  canUseWhileCrouching: boolean;
-
-  /**
-   * Callback to execute when the attack hits
-   */
-  onHit?: (attacker: Character, defender: Character) => void;
-}
+import {
+  IAttackSystem,
+  Attack,
+  AttackPhase,
+  SpecialMoveInput,
+} from "./interface/IAttackSystem";
 
 /**
  * Tracked input for special move detection
@@ -106,7 +31,7 @@ interface InputHistoryEntry {
 /**
  * System that manages character attacks and combos
  */
-export class AttackSystem {
+export class AttackSystem implements IAttackSystem {
   /**
    * The character this system controls
    */
@@ -245,6 +170,8 @@ export class AttackSystem {
       "down",
       "left",
       "right",
+      "forward",
+      "back",
       "attack_light",
       "attack_medium",
       "attack_heavy",
@@ -417,11 +344,12 @@ export class AttackSystem {
     const isInAir = !this.character.isOnGround();
     const isCrouching = this.character.isCrouching();
 
-    if (isInAir && !attack.canUseInAir) {
+    // FIX: Correct the aerial attack check - aerial attacks can only be used in the air
+    if (attack.canUseInAir && !isInAir) {
       return false;
     }
 
-    if (isCrouching && !attack.canUseWhileCrouching) {
+    if (!isInAir && isCrouching && !attack.canUseWhileCrouching) {
       return false;
     }
 
@@ -550,12 +478,6 @@ export class AttackSystem {
     const scaledDamage = Math.floor(
       this.currentAttack.frameData.damage * this.comboScaling
     );
-
-    // Apply knockback
-    const knockback: Vector2D = {
-      x: this.currentAttack.frameData.knockback.x,
-      y: this.currentAttack.frameData.knockback.y,
-    };
 
     // Process hit on defender
     defender.takeDamage(

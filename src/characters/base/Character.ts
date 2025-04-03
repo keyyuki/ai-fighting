@@ -16,6 +16,10 @@ import {
   Vector2D,
 } from "../../engine/physics/CollisionSystem";
 import * as AudioService from "../../utils/audioService";
+import { AttackSystem, Attack, AttackPhase } from "./AttackSystem";
+import { BlockingSystem, BlockType, BlockingConfig } from "./BlockingSystem";
+import { ComboSystem } from "./ComboSystem";
+import { UIManager } from "../../ui/UIManager";
 
 /**
  * Character stats configuration
@@ -57,10 +61,12 @@ export enum CharacterState {
   ATTACK_HEAVY,
   SPECIAL_1,
   SPECIAL_2,
-  BLOCK,
+  BLOCK_HIGH,
+  BLOCK_LOW,
   HITSTUN,
   BLOCKSTUN,
   KNOCKDOWN,
+  GUARD_BREAK,
 }
 
 /**
@@ -117,9 +123,11 @@ export class Character {
   protected currentAttack: string | null = null;
   protected attackPhase: "startup" | "active" | "recovery" | null = null;
   protected attackTimer: number = 0;
-  protected comboCounter: number = 0;
-  protected comboTimer: number = 0;
-  protected isBlocking: boolean = false;
+
+  // Systems
+  protected attackSystem: AttackSystem;
+  protected blockingSystem: BlockingSystem;
+  protected comboSystem: ComboSystem;
 
   // Constants
   protected readonly GRAVITY = 0.7;
@@ -137,6 +145,7 @@ export class Character {
    * @param position Initial position
    * @param animationSystem Reference to the game's animation system
    * @param collisionSystem Reference to the game's collision system
+   * @param playerNumber Player number (1 or 2)
    */
   constructor(
     id: string,
@@ -145,7 +154,8 @@ export class Character {
     stats: CharacterStats,
     position: Vector2D,
     animationSystem: SpriteAnimationSystem,
-    collisionSystem: CollisionSystem
+    collisionSystem: CollisionSystem,
+    playerNumber: 1 | 2 = 1
   ) {
     this.id = id;
     this.name = name;
@@ -159,8 +169,21 @@ export class Character {
     this.animationSystem = animationSystem;
     this.collisionSystem = collisionSystem;
 
+    // Create systems
+    this.attackSystem = new AttackSystem(this);
+    this.blockingSystem = new BlockingSystem(this);
+    this.comboSystem = new ComboSystem(this, this.attackSystem, playerNumber);
+
     // Initialize default colliders
     this.initializeColliders();
+  }
+
+  /**
+   * Set the UI Manager for combo display
+   * @param uiManager Reference to the UI manager
+   */
+  public setUIManager(uiManager: UIManager): void {
+    this.comboSystem.setUIManager(uiManager);
   }
 
   /**
@@ -171,6 +194,7 @@ export class Character {
   public setInputManager(inputManager: InputManager, playerId: string): void {
     this.inputManager = inputManager;
     this.inputPlayerId = playerId;
+    this.attackSystem.setInputManager(inputManager);
   }
 
   /**
@@ -232,6 +256,12 @@ export class Character {
     // Update combat
     this.updateCombat(deltaTime);
 
+    // Update blocking system
+    this.blockingSystem.update(deltaTime);
+
+    // Update combo system
+    this.comboSystem.update(deltaTime);
+
     // Update animation
     this.updateAnimation(deltaTime);
   }
@@ -249,6 +279,26 @@ export class Character {
     const isLeftPressed = this.inputManager.isPressed("left");
     const isUpPressed = this.inputManager.isPressed("up");
     const isDownPressed = this.inputManager.isPressed("down");
+
+    // Handle blocking (prioritize over other actions)
+    const blockInput =
+      this.facingDirection === FacingDirection.RIGHT
+        ? this.inputManager.isPressed("left")
+        : this.inputManager.isPressed("right");
+
+    if (blockInput && this.isGrounded) {
+      if (isDownPressed) {
+        this.blockingSystem.setBlocking(true, true);
+        this.changeState(CharacterState.BLOCK_LOW);
+      } else {
+        this.blockingSystem.setBlocking(true, false);
+        this.changeState(CharacterState.BLOCK_HIGH);
+      }
+      return; // Skip other input processing when blocking
+    } else {
+      // Not blocking
+      this.blockingSystem.setBlocking(false, false);
+    }
 
     // Handle jump
     if (isUpPressed && this.isGrounded) {
@@ -280,7 +330,9 @@ export class Character {
     else if (
       this.isGrounded &&
       (this.currentState === CharacterState.WALK_FORWARD ||
-        this.currentState === CharacterState.WALK_BACKWARD)
+        this.currentState === CharacterState.WALK_BACKWARD ||
+        this.currentState === CharacterState.BLOCK_HIGH ||
+        this.currentState === CharacterState.BLOCK_LOW)
     ) {
       this.changeState(CharacterState.IDLE);
     }
@@ -294,23 +346,6 @@ export class Character {
       this.performAttack("heavy");
     } else if (this.inputManager.isJustPressed("special_1")) {
       this.performAttack("special1");
-    }
-
-    // Handle blocking (prioritize crouch block vs standing)
-    const blockInput =
-      this.facingDirection === FacingDirection.RIGHT
-        ? this.inputManager.isPressed("left")
-        : this.inputManager.isPressed("right");
-
-    if (blockInput && this.isGrounded) {
-      this.isBlocking = true;
-      if (isDownPressed) {
-        this.changeState(CharacterState.CROUCH);
-      } else {
-        this.changeState(CharacterState.BLOCK);
-      }
-    } else {
-      this.isBlocking = false;
     }
   }
 
@@ -387,6 +422,7 @@ export class Character {
 
       case CharacterState.HITSTUN:
       case CharacterState.BLOCKSTUN:
+      case CharacterState.GUARD_BREAK:
         if (stateTime >= this.stateDuration) {
           this.changeState(CharacterState.IDLE);
         }
@@ -397,14 +433,6 @@ export class Character {
           this.getUp();
         }
         break;
-    }
-
-    // Update combo timer
-    if (this.comboCounter > 0) {
-      this.comboTimer -= deltaTime;
-      if (this.comboTimer <= 0) {
-        this.comboCounter = 0;
-      }
     }
   }
 
@@ -466,36 +494,14 @@ export class Character {
    * @param deltaTime Time since last update in milliseconds
    */
   protected updateCombat(deltaTime: number): void {
-    if (!this.currentAttack || !this.attackPhase) return;
-
-    // Update attack timer
-    this.attackTimer -= deltaTime;
-
-    // Process attack phases
-    if (this.attackTimer <= 0) {
-      switch (this.attackPhase) {
-        case "startup":
-          // Transition to active phase
-          this.attackPhase = "active";
-          const attackData = this.attackData[this.currentAttack];
-          this.attackTimer = attackData.active * 16.67; // Convert frames to ms (assuming 60fps)
-          this.activateHitboxes(this.currentAttack);
-          break;
-
-        case "active":
-          // Transition to recovery phase
-          this.attackPhase = "recovery";
-          const data = this.attackData[this.currentAttack];
-          this.attackTimer = data.recovery * 16.67; // Convert frames to ms
-          this.deactivateHitboxes();
-          break;
-
-        case "recovery":
-          // Attack complete
-          this.endAttack();
-          break;
-      }
-    }
+    // Use the AttackSystem for combat updates
+    this.attackSystem.update(deltaTime, [
+      "attack_light",
+      "attack_medium",
+      "attack_heavy",
+      "special_1",
+      "special_2",
+    ]);
   }
 
   /**
@@ -535,8 +541,12 @@ export class Character {
         return "jump";
       case CharacterState.CROUCH:
         return "crouch";
-      case CharacterState.BLOCK:
-        return "block";
+      case CharacterState.BLOCK_HIGH:
+        return "block_high";
+      case CharacterState.BLOCK_LOW:
+        return "block_low";
+      case CharacterState.BLOCKSTUN:
+        return "blockstun";
       case CharacterState.ATTACK_LIGHT:
         return "attack_light";
       case CharacterState.ATTACK_MEDIUM:
@@ -547,6 +557,8 @@ export class Character {
         return "hit";
       case CharacterState.KNOCKDOWN:
         return "knockdown";
+      case CharacterState.GUARD_BREAK:
+        return "guard_break";
       default:
         return "idle";
     }
@@ -576,8 +588,65 @@ export class Character {
       1.0
     );
 
+    // Draw guard meter if blocking or recovering guard
+    if (
+      this.currentState === CharacterState.BLOCK_HIGH ||
+      this.currentState === CharacterState.BLOCK_LOW ||
+      this.blockingSystem.getGuardMeterPercentage() < 100
+    ) {
+      this.renderGuardMeter(ctx);
+    }
+
     // Debug rendering for hitboxes/hurtboxes
     this.renderDebugColliders(ctx);
+  }
+
+  /**
+   * Render guard meter above the character when blocking
+   * @param ctx Canvas rendering context
+   */
+  protected renderGuardMeter(ctx: CanvasRenderingContext2D): void {
+    const meterWidth = 60;
+    const meterHeight = 6;
+    const percentage = this.blockingSystem.getGuardMeterPercentage();
+
+    // Draw meter background
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.fillRect(
+      this.position.x - meterWidth / 2,
+      this.position.y - 100,
+      meterWidth,
+      meterHeight
+    );
+
+    // Determine color based on meter level
+    let color;
+    if (percentage > 70) {
+      color = "rgba(0, 255, 0, 0.8)";
+    } else if (percentage > 30) {
+      color = "rgba(255, 255, 0, 0.8)";
+    } else {
+      color = "rgba(255, 0, 0, 0.8)";
+    }
+
+    // Draw meter fill
+    ctx.fillStyle = color;
+    ctx.fillRect(
+      this.position.x - meterWidth / 2,
+      this.position.y - 100,
+      (meterWidth * percentage) / 100,
+      meterHeight
+    );
+
+    // Draw border
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      this.position.x - meterWidth / 2,
+      this.position.y - 100,
+      meterWidth,
+      meterHeight
+    );
   }
 
   /**
@@ -628,7 +697,7 @@ export class Character {
    * @param newState The state to change to
    * @param stateData Optional data for the new state
    */
-  protected changeState(newState: CharacterState, stateData: any = null): void {
+  public changeState(newState: CharacterState, stateData: any = null): void {
     // Don't change if it's the same state
     if (newState === this.currentState) return;
 
@@ -657,6 +726,7 @@ export class Character {
       this.currentState === CharacterState.SPECIAL_2 ||
       this.currentState === CharacterState.HITSTUN ||
       this.currentState === CharacterState.BLOCKSTUN ||
+      this.currentState === CharacterState.GUARD_BREAK ||
       this.currentState === CharacterState.KNOCKDOWN ||
       (this.currentState === CharacterState.JUMP_START && !this.isGrounded)
     );
@@ -670,7 +740,8 @@ export class Character {
     // Hitstun, blockstun can always interrupt attacks
     if (
       newState === CharacterState.HITSTUN ||
-      newState === CharacterState.BLOCKSTUN
+      newState === CharacterState.BLOCKSTUN ||
+      newState === CharacterState.GUARD_BREAK
     ) {
       return true;
     }
@@ -695,11 +766,25 @@ export class Character {
         AudioService.playSound("hit");
         break;
 
-      case CharacterState.BLOCK:
-        // Play block sound if just started blocking
-        if (this.previousState !== CharacterState.BLOCK) {
-          AudioService.playSound("block");
+      case CharacterState.BLOCK_HIGH:
+      case CharacterState.BLOCK_LOW:
+        // Play block start sound if just started blocking
+        if (
+          this.previousState !== CharacterState.BLOCK_HIGH &&
+          this.previousState !== CharacterState.BLOCK_LOW
+        ) {
+          AudioService.playSound("block_start");
         }
+        break;
+
+      case CharacterState.BLOCKSTUN:
+        // Play block hit sound
+        AudioService.playSound("block");
+        break;
+
+      case CharacterState.GUARD_BREAK:
+        // Play guard break sound
+        AudioService.playSound("guard_break");
         break;
     }
   }
@@ -806,68 +891,112 @@ export class Character {
    * Take damage from an attack
    * @param damage Amount of damage to take
    * @param attacker The character who dealt the damage
-   * @param attackData Data about the attack
+   * @param attackFrameData Data about the attack
    * @returns True if the character was hit (not blocking)
    */
   public takeDamage(
     damage: number,
     attacker: Character,
-    attackData: AttackFrameData
+    attackFrameData: AttackFrameData
   ): boolean {
-    // Check if blocking
-    if (this.isBlocking) {
-      // Reduce damage when blocking
-      const reducedDamage = Math.floor(damage * 0.2);
-      this.currentHealth -= reducedDamage;
+    const attackerAttackSystem = attacker.getAttackSystem();
+    const currentAttack = attackerAttackSystem.getCurrentAttack();
 
-      // Apply blockstun
-      this.changeState(CharacterState.BLOCKSTUN);
-      this.stateDuration = attackData.blockstun * 16.67; // Convert frames to ms
+    // If there's no current attack, just apply the damage directly
+    if (!currentAttack) {
+      this.currentHealth -= damage;
+      return true;
+    }
 
-      // Apply slight pushback
-      const pushDirection = attacker.position.x < this.position.x ? 1 : -1;
-      this.velocity.x = 2 * pushDirection;
+    // Check if attack can be blocked
+    if (this.blockingSystem.canBlockAttack(currentAttack)) {
+      // Process the block and get reduced damage
+      const reducedDamage = this.blockingSystem.processBlock(
+        currentAttack,
+        attacker
+      );
 
-      // Play block sound
-      AudioService.playSound("block");
+      // Apply the reduced damage
+      this.currentHealth = Math.max(0, this.currentHealth - reducedDamage);
 
-      return false;
+      return false; // Attack was blocked
     } else {
       // Take full damage
-      this.currentHealth -= damage;
+      this.currentHealth = Math.max(0, this.currentHealth - damage);
 
       // Apply hitstun and knockback
       this.changeState(CharacterState.HITSTUN);
-      this.stateDuration = attackData.hitstun * 16.67; // Convert frames to ms
+      this.stateDuration = attackFrameData.hitstun * 16.67; // Convert frames to ms
 
       // Apply knockback
-      const knockbackDirection = attacker.position.x < this.position.x ? 1 : -1;
-      this.velocity.x = attackData.knockback.x * knockbackDirection;
-      this.velocity.y = -attackData.knockback.y; // Negative because Y is up
+      const knockbackDirection =
+        attacker.getPosition().x < this.position.x ? 1 : -1;
+      this.velocity.x = attackFrameData.knockback.x * knockbackDirection;
+      this.velocity.y = -attackFrameData.knockback.y; // Negative because Y is up
 
-      // Increment attacker's combo counter
-      attacker.incrementCombo();
+      // Register hit with the combo system
+      attacker
+        .getComboSystem()
+        .onHit(this, currentAttack, currentAttack.frameData.damage);
 
       // Play hit sound
       AudioService.playSound("hit");
 
-      return true;
+      return true; // Attack hit successfully
     }
   }
 
   /**
-   * Increment combo counter
+   * Apply a force vector to the character (for knockback, etc.)
+   * @param force Force vector to apply
+   */
+  public applyForce(force: Vector2D): void {
+    this.velocity.x += force.x;
+    this.velocity.y += force.y;
+  }
+
+  /**
+   * Set the duration for timed states like hitstun, blockstun
+   * @param duration Duration in milliseconds
+   */
+  public setStateDuration(duration: number): void {
+    this.stateDuration = duration;
+  }
+
+  /**
+   * Get the character's attack system
+   */
+  public getAttackSystem(): AttackSystem {
+    return this.attackSystem;
+  }
+
+  /**
+   * Get the character's blocking system
+   */
+  public getBlockingSystem(): BlockingSystem {
+    return this.blockingSystem;
+  }
+
+  /**
+   * Get the character's combo system
+   */
+  public getComboSystem(): ComboSystem {
+    return this.comboSystem;
+  }
+
+  /**
+   * Increment combo counter (legacy method - delegates to combo system)
    */
   public incrementCombo(): void {
-    this.comboCounter++;
-    this.comboTimer = 2000; // 2 second combo window
+    // This is kept for backward compatibility
+    // The combo system now handles combo tracking internally
   }
 
   /**
    * Get current combo count
    */
   public getComboCount(): number {
-    return this.comboCounter;
+    return this.comboSystem.getComboCount();
   }
 
   /**
@@ -910,5 +1039,40 @@ export class Character {
    */
   public isDead(): boolean {
     return this.currentHealth <= 0;
+  }
+
+  /**
+   * Check if the character is on the ground
+   */
+  public isOnGround(): boolean {
+    return this.isGrounded;
+  }
+
+  /**
+   * Check if the character is crouching
+   */
+  public isCrouching(): boolean {
+    return this.currentState === CharacterState.CROUCH;
+  }
+
+  /**
+   * Check if the character is currently blocking
+   */
+  public isBlocking(): boolean {
+    return this.blockingSystem.getIsBlocking();
+  }
+
+  /**
+   * Get character's facing direction
+   */
+  public getFacingDirection(): FacingDirection {
+    return this.facingDirection;
+  }
+
+  /**
+   * Get character's unique ID
+   */
+  public getId(): string {
+    return this.id;
   }
 }
