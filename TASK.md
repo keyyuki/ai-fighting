@@ -27,12 +27,12 @@
   - [x] Add combo counter
   - [x] Create round indicator
   - [x] Develop UI manager to control all UI components
-- [ ] Game Mechanics
+- [x] Game Mechanics
   - [x] Design combo system
   - [x] Implement blocking mechanics
   - [x] Create special move input detection
   - [x] Design damage scaling
-  - [ ] Add round system
+  - [x] Add round system
 - [ ] Asset Creation/Integration
   - [ ] Create or source character sprites
   - [ ] Design background stages
@@ -100,6 +100,14 @@
   - [x] Create temporary modifier system for special conditions
   - [x] Integrate damage scaling with ComboSystem
   - [x] Add comprehensive unit tests for damage scaling
+- [x] Add round system (Date: Current)
+  - [x] Create IRoundSystem interface
+  - [x] Implement RoundSystem class with round management
+  - [x] Integrate with UIManager and RoundIndicator
+  - [x] Add match win detection
+  - [x] Handle round timers and time expiry
+  - [x] Support configurable round counts
+  - [x] Add comprehensive unit tests for round system
 
 ## Discovered During Work
 
