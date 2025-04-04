@@ -1,0 +1,129 @@
+{
+  "stageId": "dojo",
+  "stageName": "Training Dojo",
+  "description": "A peaceful dojo for intense training. Features traditional Japanese architecture and serene mountain backdrop.",
+  "layers": [
+    {
+      "id": "far_background",
+      "imageFile": "dojo_far_background.png",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "dimensions": {
+        "width": 1280,
+        "height": 720
+      },
+      "parallaxFactor": 0.1,
+      "animated": false
+    },
+    {
+      "id": "mountains",
+      "imageFile": "dojo_mountains.png",
+      "position": {
+        "x": 0,
+        "y": 50
+      },
+      "dimensions": {
+        "width": 1280,
+        "height": 300
+      },
+      "parallaxFactor": 0.2,
+      "animated": false
+    },
+    {
+      "id": "middle_background",
+      "imageFile": "dojo_middle_background.png",
+      "position": {
+        "x": 0,
+        "y": 100
+      },
+      "dimensions": {
+        "width": 1280,
+        "height": 620
+      },
+      "parallaxFactor": 0.3,
+      "animated": false
+    },
+    {
+      "id": "near_background",
+      "imageFile": "dojo_near_background.png",
+      "position": {
+        "x": 0,
+        "y": 200
+      },
+      "dimensions": {
+        "width": 1280,
+        "height": 520
+      },
+      "parallaxFactor": 0.6,
+      "animated": false
+    },
+    {
+      "id": "floor",
+      "imageFile": "dojo_floor.png",
+      "position": {
+        "x": 0,
+        "y": 500
+      },
+      "dimensions": {
+        "width": 1280,
+        "height": 220
+      },
+      "parallaxFactor": 1.0,
+      "animated": false
+    }
+  ],
+  "animations": [
+    {
+      "layerId": "near_background",
+      "animationData": {
+        "layerId": "near_background",
+        "frameWidth": 1280,
+        "frameHeight": 520,
+        "frames": 4,
+        "frameRate": 8,
+        "loop": true
+      }
+    }
+  ],
+  "boundaries": {
+    "left": 100,
+    "right": 1180,
+    "floor": 500
+  },
+  "lighting": {
+    "mainLight": {
+      "r": 255,
+      "g": 240,
+      "b": 220,
+      "intensity": 1.0
+    },
+    "ambientLight": {
+      "r": 200,
+      "g": 200,
+      "b": 220,
+      "intensity": 0.4
+    }
+  },
+  "audio": {
+    "backgroundMusic": "dojo_theme.mp3",
+    "ambientSounds": [
+      "wind.mp3",
+      "birds.mp3",
+      "bamboo.mp3"
+    ],
+    "eventSounds": {
+      "roundStart": "gong.mp3",
+      "roundEnd": "applause.mp3"
+    }
+  },
+  "cameraSettings": {
+    "followCharacters": true,
+    "bounds": {
+      "minX": 0,
+      "maxX": 100
+    },
+    "smoothing": 0.1
+  }
+}

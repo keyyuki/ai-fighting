@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dojo Stage Placeholder Generator</title>
+  <style>
+    body {
+      background: #333;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .canvas-container {
+      margin: 20px auto;
+      border: 1px solid #666;
+    }
+
+    button {
+      padding: 10px 15px;
+      margin: 5px;
+      background: #555;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #777;
+    }
+
+    .controls {
+      margin: 20px 0;
+    }
+
+    .download-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .download-links a {
+      background: #444;
+      color: white;
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Dojo Stage Placeholder Generator</h1>
+  <div class="controls">
+    <button id="generate">Generate All Layers</button>
+  </div>
+  <div class="canvas-container">
+    <canvas id="canvas" width="1280" height="720"></canvas>
+  </div>
+  <div class="download-links" id="downloadLinks"></div>
+
+  <script>
+    // Configuration for the dojo stage layers
+    const layers = [
+      {
+        id: 'far_background',
+        color: '#87CEEB', // Sky blue
+        elements: [
+          { type: 'rect', color: '#87CEEB', x: 0, y: 0, width: 1280, height: 720 }, // Sky
+          { type: 'rect', color: '#6B8E23', x: 0, y: 500, width: 1280, height: 220 }, // Distant ground
+          { type: 'text', text: 'Far Background', color: '#333', x: 640, y: 360, font: '40px Arial' }
+        ]
+      },
+      {
+        id: 'mountains',
+        color: 'transparent',
+        elements: [
+          { type: 'triangle', color: '#708090', x1: 200, y1: 350, x2: 400, y2: 150, x3: 600, y3: 350 }, // Left mountain
+          { type: 'triangle', color: '#778899', x1: 500, y1: 350, x2: 700, y2: 100, x3: 900, y3: 350 }, // Middle mountain
+          { type: 'triangle', color: '#708090', x1: 800, y1: 350, x2: 1000, y2: 200, x3: 1200, y3: 350 }, // Right mountain
+          { type: 'text', text: 'Mountains', color: '#333', x: 640, y: 250, font: '40px Arial' }
+        ]
+      },
+      {
+        id: 'middle_background',
+        color: 'transparent',
+        elements: [
+          { type: 'rect', color: '#8B4513', x: 340, y: 300, width: 600, height: 200 }, // Dojo building
+          { type: 'rect', color: '#A0522D', x: 320, y: 280, width: 640, height: 40 }, // Roof
+          { type: 'rect', color: '#CD853F', x: 590, y: 400, width: 100, height: 100 }, // Door
+          { type: 'text', text: 'Middle Background (Dojo)', color: '#333', x: 640, y: 360, font: '30px Arial' }
+        ]
+      },
+      {
+        id: 'near_background',
+        color: 'transparent',
+        elements: [
+          { type: 'rect', color: '#BDB76B', x: 100, y: 450, width: 200, height: 50 }, // Left decoration
+          { type: 'rect', color: '#CD853F', x: 600, y: 350, width: 80, height: 150 }, // Middle pole
+          { type: 'rect', color: '#BDB76B', x: 980, y: 450, width: 200, height: 50 }, // Right decoration
+          { type: 'text', text: 'Near Background', color: '#333', x: 640, y: 400, font: '30px Arial' }
+        ]
+      },
+      {
+        id: 'floor',
+        color: '#D2B48C', // Tan
+        elements: [
+          { type: 'rect', color: '#D2B48C', x: 0, y: 0, width: 1280, height: 220 }, // Floor
+          { type: 'line', color: '#8B4513', x1: 100, y1: 50, x2: 1180, y2: 50, width: 3 }, // Floor detail
+          { type: 'line', color: '#8B4513', x1: 100, y1: 150, x2: 1180, y2: 150, width: 3 }, // Floor detail
+          { type: 'text', text: 'Floor (Y=500)', color: '#333', x: 640, y: 110, font: '30px Arial' }
+        ]
+      }
+    ];
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const downloadLinksContainer = document.getElementById('downloadLinks');
+
+    // Draw a layer on the canvas
+    function drawLayer(layer) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw background color if specified
+      if (layer.color !== 'transparent') {
+        ctx.fillStyle = layer.color;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // Draw all elements
+      layer.elements.forEach(element => {
+        ctx.save();
+
+        switch (element.type) {
+          case 'rect':
+            ctx.fillStyle = element.color;
+            ctx.fillRect(element.x, element.y, element.width, element.height);
+            break;
+
+          case 'triangle':
+            ctx.fillStyle = element.color;
+            ctx.beginPath();
+            ctx.moveTo(element.x1, element.y1);
+            ctx.lineTo(element.x2, element.y2);
+            ctx.lineTo(element.x3, element.y3);
+            ctx.closePath();
+            ctx.fill();
+            break;
+
+          case 'circle':
+            ctx.fillStyle = element.color;
+            ctx.beginPath();
+            ctx.arc(element.x, element.y, element.radius, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+
+          case 'text':
+            ctx.fillStyle = element.color;
+            ctx.font = element.font;
+            ctx.textAlign = 'center';
+            ctx.fillText(element.text, element.x, element.y);
+            break;
+
+          case 'line':
+            ctx.strokeStyle = element.color;
+            ctx.lineWidth = element.width;
+            ctx.beginPath();
+            ctx.moveTo(element.x1, element.y1);
+            ctx.lineTo(element.x2, element.y2);
+            ctx.stroke();
+            break;
+        }
+
+        ctx.restore();
+      });
+
+      // Add layer ID text for identification
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, 300, 40);
+      ctx.fillStyle = 'white';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Layer: ${layer.id}`, 10, 30);
+
+      // Create download link
+      const imageData = canvas.toDataURL('image/png');
+
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = `dojo_${layer.id}.png`;
+      link.textContent = `Download ${layer.id}`;
+      link.className = 'download-link';
+
+      downloadLinksContainer.appendChild(link);
+    }
+
+    // Generate all layers
+    document.getElementById('generate').addEventListener('click', function () {
+      downloadLinksContainer.innerHTML = '';
+      layers.forEach(layer => drawLayer(layer));
+    });
+
+    // Draw initial layer
+    drawLayer(layers[0]);
+  </script>
+</body>
+
+</html>
