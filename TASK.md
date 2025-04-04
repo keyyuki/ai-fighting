@@ -34,7 +34,7 @@
   - [x] Design damage scaling
   - [x] Add round system
 - [ ] Asset Creation/Integration
-  - [ ] Create or source character sprites
+  - [🔄] Create or source character sprites
   - [ ] Design background stages
   - [x] Source sound effects
   - [x] Find or create background music

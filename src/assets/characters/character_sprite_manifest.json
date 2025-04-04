@@ -1,0 +1,175 @@
+{
+  "version": "1.0",
+  "description": "Manifest for character sprite requirements",
+  "generalRequirements": {
+    "imageFormat": "PNG",
+    "transparency": true,
+    "recommendedSize": {
+      "characterHeight": 200,
+      "characterWidth": 150
+    },
+    "spritesheet": {
+      "format": "horizontal",
+      "frameSizeConsistency": true
+    }
+  },
+  "requiredAnimations": [
+    {
+      "id": "idle",
+      "description": "Character standing idle",
+      "minimumFrames": 4,
+      "recommendedFrames": 8,
+      "looping": true
+    },
+    {
+      "id": "walk",
+      "description": "Walking forward",
+      "minimumFrames": 6,
+      "recommendedFrames": 8,
+      "looping": true
+    },
+    {
+      "id": "walk_back",
+      "description": "Walking backward",
+      "minimumFrames": 6,
+      "recommendedFrames": 8,
+      "looping": true
+    },
+    {
+      "id": "jump_start",
+      "description": "Jump preparation",
+      "minimumFrames": 2,
+      "recommendedFrames": 3,
+      "looping": false
+    },
+    {
+      "id": "jump",
+      "description": "In-air animation (both ascent and descent)",
+      "minimumFrames": 2,
+      "recommendedFrames": 4,
+      "looping": true
+    },
+    {
+      "id": "crouch",
+      "description": "Crouching position",
+      "minimumFrames": 2,
+      "recommendedFrames": 3,
+      "looping": false
+    },
+    {
+      "id": "block_high",
+      "description": "Standing block stance",
+      "minimumFrames": 1,
+      "recommendedFrames": 2,
+      "looping": false
+    },
+    {
+      "id": "block_low",
+      "description": "Crouching block stance",
+      "minimumFrames": 1,
+      "recommendedFrames": 2,
+      "looping": false
+    },
+    {
+      "id": "blockstun",
+      "description": "Being hit while blocking",
+      "minimumFrames": 2,
+      "recommendedFrames": 3,
+      "looping": false
+    },
+    {
+      "id": "attack_light",
+      "description": "Light attack",
+      "minimumFrames": 4,
+      "recommendedFrames": 6,
+      "looping": false,
+      "requiresHitboxData": true
+    },
+    {
+      "id": "attack_medium",
+      "description": "Medium attack",
+      "minimumFrames": 6,
+      "recommendedFrames": 8,
+      "looping": false,
+      "requiresHitboxData": true
+    },
+    {
+      "id": "attack_heavy",
+      "description": "Heavy attack",
+      "minimumFrames": 8,
+      "recommendedFrames": 10,
+      "looping": false,
+      "requiresHitboxData": true
+    },
+    {
+      "id": "hit",
+      "description": "Getting hit animation",
+      "minimumFrames": 3,
+      "recommendedFrames": 5,
+      "looping": false
+    },
+    {
+      "id": "knockdown",
+      "description": "Knocked down animation",
+      "minimumFrames": 4,
+      "recommendedFrames": 6,
+      "looping": false
+    },
+    {
+      "id": "guard_break",
+      "description": "Guard broken animation",
+      "minimumFrames": 4,
+      "recommendedFrames": 6,
+      "looping": false
+    }
+  ],
+  "optional": [
+    {
+      "id": "special1",
+      "description": "Special move animation",
+      "recommendedFrames": 12,
+      "looping": false,
+      "requiresHitboxData": true
+    },
+    {
+      "id": "special2",
+      "description": "Additional special move",
+      "recommendedFrames": 12,
+      "looping": false,
+      "requiresHitboxData": true
+    },
+    {
+      "id": "victory",
+      "description": "Victory pose",
+      "recommendedFrames": 8,
+      "looping": true
+    },
+    {
+      "id": "defeat",
+      "description": "Defeat animation",
+      "recommendedFrames": 6,
+      "looping": false
+    }
+  ],
+  "collisionData": {
+    "required": true,
+    "format": "JSON",
+    "types": [
+      {
+        "name": "pushbox",
+        "description": "Character-to-character collision",
+        "color": "rgba(0, 255, 0, 0.5)"
+      },
+      {
+        "name": "hurtbox",
+        "description": "Areas where the character can be hit",
+        "color": "rgba(0, 0, 255, 0.5)"
+      },
+      {
+        "name": "hitbox",
+        "description": "Areas that deal damage to opponents",
+        "color": "rgba(255, 0, 0, 0.5)"
+      }
+    ]
+  }
+}
